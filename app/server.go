@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -32,26 +34,23 @@ func main() {
 func handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	buf := make([]byte, 1024)
+	scanner := bufio.NewScanner(conn)
 
-	n, err := conn.Read(buf)
+	for scanner.Scan() {
+		command := scanner.Text()
 
-	if err != nil {
-		log.Println("ERROR: failed to read data from connection: ", err.Error())
-	}
+		commandWords := strings.Split(command, "\r\n")
+		fmt.Println(commandWords)
 
-	command := string(buf[:n])
+		for _, word := range commandWords {
+			if strings.ToLower(word) == "ping" {
+				PONG := "+PONG\r\n"
 
-	commandWords := strings.Split(command, "\r\n")
+				_, err := conn.Write([]byte(PONG))
 
-	for _, word := range commandWords {
-		if strings.ToLower(word) == "ping" {
-			PONG := "+PONG\r\n"
-
-			_, err = conn.Write([]byte(PONG))
-
-			if err != nil {
-				log.Println("ERROR: failed to write data to connection: ", err.Error())
+				if err != nil {
+					log.Println("ERROR: failed to write data to connection: ", err.Error())
+				}
 			}
 		}
 	}
