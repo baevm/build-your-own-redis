@@ -1,18 +1,31 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"net"
-	"strings"
 )
 
 const ADDR = "0.0.0.0:6379"
 
 func main() {
-	log.Println("Starting TCP listener on:", ADDR)
-	listener, err := net.Listen("tcp", ADDR)
+	redisServer := NewRedisServer(ADDR)
+	redisServer.Start()
+}
+
+type RedisServer struct {
+	addr string
+}
+
+func NewRedisServer(addr string) *RedisServer {
+	return &RedisServer{
+		addr: addr,
+	}
+}
+
+func (rs *RedisServer) Start() {
+	log.Println("Starting Redis server on:", rs.addr)
+	listener, err := net.Listen("tcp", rs.addr)
 
 	if err != nil {
 		log.Fatalln("ERROR: failed to start TCP listener: ", err.Error())
@@ -34,16 +47,28 @@ func main() {
 func handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	scanner := bufio.NewScanner(conn)
+	resp := NewResp(conn)
 
-	for scanner.Scan() {
-		command := scanner.Text()
+	value, err := resp.Read()
 
-		commandWords := strings.Split(command, "\r\n")
-		fmt.Println(commandWords)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-		for _, word := range commandWords {
-			if strings.ToLower(word) == "ping" {
+	log.Printf("%+v\n", value)
+
+	if value.dataType == "bulk" {
+
+	} else {
+		i := 0
+
+	loop:
+		for i < len(value.arrayVal) {
+			command := value.arrayVal[i]
+
+			switch command.bulkStrVal {
+			case "ping":
 				PONG := "+PONG\r\n"
 
 				_, err := conn.Write([]byte(PONG))
@@ -51,7 +76,31 @@ func handleConn(conn net.Conn) {
 				if err != nil {
 					log.Println("ERROR: failed to write data to connection: ", err.Error())
 				}
+
+				i += 1
+
+			case "echo":
+				echoMsg := ""
+
+				if i+1 <= len(value.arrayVal)-1 {
+					i += 1
+					echoMsg = value.arrayVal[i].bulkStrVal
+				}
+
+				encodedStr := fmt.Sprintf("$%v\r\n%s\r\n", len(echoMsg), echoMsg)
+
+				_, err := conn.Write([]byte(encodedStr))
+
+				if err != nil {
+					log.Println("ERROR: failed to write data to connection: ", err.Error())
+				}
+
+				i += 1
+
+			default:
+				break loop
 			}
 		}
 	}
+
 }
