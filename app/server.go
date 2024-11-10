@@ -1,26 +1,22 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net"
+
+	"github.com/codecrafters-io/redis-starter-go/app/cache"
 )
 
-const ADDR = "0.0.0.0:6379"
-
-func main() {
-	redisServer := NewRedisServer(ADDR)
-	redisServer.Start()
-}
-
 type RedisServer struct {
-	addr string
+	addr  string
+	cache *cache.Cache
 }
 
-func NewRedisServer(addr string) *RedisServer {
+func NewRedisServer(addr string, cache *cache.Cache) *RedisServer {
 	return &RedisServer{
-		addr: addr,
+		addr:  addr,
+		cache: cache,
 	}
 }
 
@@ -41,11 +37,11 @@ func (rs *RedisServer) Start() {
 			log.Fatalln("ERROR: failed to accept connection: ", err.Error())
 		}
 
-		go handleConn(conn)
+		go rs.handleConn(conn)
 	}
 }
 
-func handleConn(conn net.Conn) {
+func (rs *RedisServer) handleConn(conn net.Conn) {
 	defer conn.Close()
 
 	resp := NewResp(conn)
@@ -54,59 +50,22 @@ func handleConn(conn net.Conn) {
 		value, err := resp.Read()
 
 		if err != nil {
+
 			if err == io.EOF {
-				continue
+				return
 			} else {
-				log.Println("fail to read RESP: ", err)
+				log.Println("failed to read RESP command: ", err)
 				return
 			}
 		}
 
 		log.Printf("%+v\n", value)
 
-		if value.dataType == "bulk" {
+		writer := NewWriter(conn)
+		isWrote := writer.Write(value, rs.cache)
 
-		} else {
-			i := 0
-
-			for i < len(value.arrayVal) {
-				command := value.arrayVal[i]
-
-				switch command.bulkStrVal {
-				case "ping":
-					PONG := "+PONG\r\n"
-
-					_, err := conn.Write([]byte(PONG))
-
-					if err != nil {
-						log.Println("ERROR: failed to write data to connection: ", err.Error())
-					}
-
-					i += 1
-
-				case "echo":
-					echoMsg := ""
-
-					if i+1 <= len(value.arrayVal)-1 {
-						i += 1
-						echoMsg = value.arrayVal[i].bulkStrVal
-					}
-
-					encodedStr := fmt.Sprintf("$%v\r\n%s\r\n", len(echoMsg), echoMsg)
-
-					_, err := conn.Write([]byte(encodedStr))
-
-					if err != nil {
-						log.Println("ERROR: failed to write data to connection: ", err.Error())
-					}
-
-					i += 1
-
-				default:
-					return
-				}
-			}
+		if !isWrote {
+			return
 		}
 	}
-
 }

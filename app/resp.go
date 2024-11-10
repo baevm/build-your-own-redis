@@ -23,11 +23,11 @@ type Value struct {
 	// 'array', 'bulk'
 	dataType string
 
-	// value of bulk string
+	// A bulk string represents a single binary string.
 	// in lower case
 	bulkStrVal string
 
-	// value of array
+	// Clients send commands to the Redis server as RESP arrays.
 	arrayVal []Value
 }
 
