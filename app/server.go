@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"strings"
 )
 
 const ADDR = "0.0.0.0:6379"
@@ -32,20 +33,26 @@ func main() {
 
 		command := string(buf[:n])
 
-		if command == "*1\r\n$4\r\nPING\r\n" {
-			PONG := "+PONG\r\n"
+		commandWords := strings.Split(command, "\\r\\n")
 
-			_, err = conn.Write([]byte(PONG))
+		// fmt.Printf("%#v\n", commandWords)
 
-			if err != nil {
-				log.Println("ERROR: failed to write data to connection: ", err.Error())
+		for _, word := range commandWords {
+			if word == "PING" {
+				PONG := "+PONG\r\n"
+
+				_, err = conn.Write([]byte(PONG))
+
+				if err != nil {
+					log.Println("ERROR: failed to write data to connection: ", err.Error())
+				}
 			}
+		}
 
-			err = conn.Close()
+		err = conn.Close()
 
-			if err != nil {
-				log.Println("ERROR: failed to close connection: ", err.Error())
-			}
+		if err != nil {
+			log.Println("ERROR: failed to close connection: ", err.Error())
 		}
 	}
 }
