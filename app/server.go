@@ -12,12 +12,40 @@ func main() {
 	listener, err := net.Listen("tcp", ADDR)
 
 	if err != nil {
-		log.Fatalln("failed to start TCP listener: ", err.Error())
+		log.Fatalln("ERROR: failed to start TCP listener: ", err.Error())
 	}
 
-	_, err = listener.Accept()
+	for {
+		conn, err := listener.Accept()
 
-	if err != nil {
-		log.Fatalln("failed to accept connection: ", err.Error())
+		if err != nil {
+			log.Fatalln("ERROR: failed to accept connection: ", err.Error())
+		}
+
+		buf := make([]byte, 1024)
+
+		n, err := conn.Read(buf)
+
+		if err != nil {
+			log.Println("ERROR: failed to read data from connection: ", err.Error())
+		}
+
+		command := string(buf[:n])
+
+		if command == "PING\n" {
+			PONG := "+PONG\r\n"
+
+			_, err = conn.Write([]byte(PONG))
+
+			if err != nil {
+				log.Println("ERROR: failed to write data to connection: ", err.Error())
+			}
+
+			err = conn.Close()
+
+			if err != nil {
+				log.Println("ERROR: failed to close connection: ", err.Error())
+			}
+		}
 	}
 }
