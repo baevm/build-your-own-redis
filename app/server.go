@@ -59,8 +59,6 @@ func (rs *RedisServer) handleConn(conn net.Conn) {
 			}
 		}
 
-		log.Printf("%+v\n", value)
-
 		writer := NewWriter(conn)
 		isWrote := writer.Write(value, rs.cache)
 

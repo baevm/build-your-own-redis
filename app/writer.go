@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strconv"
 
 	"github.com/codecrafters-io/redis-starter-go/app/cache"
 )
@@ -58,6 +59,7 @@ func (w *Writer) Write(value Value, cache *cache.Cache) bool {
 		case SET:
 			key := ""
 
+			// read key
 			if i+1 <= len(value.arrayVal) {
 				i += 1
 				key = value.arrayVal[i].bulkStrVal
@@ -65,12 +67,31 @@ func (w *Writer) Write(value Value, cache *cache.Cache) bool {
 
 			val := ""
 
+			// read value
 			if i+1 <= len(value.arrayVal) {
 				i += 1
 				val = value.arrayVal[i].bulkStrVal
 			}
 
-			cache.Set(key, val)
+			// if PX argument with time provided
+			// set cache item with expire time
+			// else set item with no expiration
+			if i+2 <= len(value.arrayVal) {
+				// read PX argument
+				i += 2
+				expireTimeStr := value.arrayVal[i].bulkStrVal
+
+				expireTimeMs, err := strconv.Atoi(expireTimeStr)
+
+				if err != nil {
+					log.Println("Failed to convert expire time to int: ", err.Error())
+					return false
+				}
+
+				cache.SetWithExpiration(key, val, expireTimeMs)
+			} else {
+				cache.Set(key, val)
+			}
 
 			OK := "+OK\r\n"
 
@@ -102,6 +123,8 @@ func (w *Writer) Write(value Value, cache *cache.Cache) bool {
 					log.Println("ERROR: failed to NOTFOUND in GET: ", err.Error())
 					return false
 				}
+
+				return true
 			}
 
 			encodedStr := fmt.Sprintf("$%v\r\n%s\r\n", len(val), val)
