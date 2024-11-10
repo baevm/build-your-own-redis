@@ -16,6 +16,8 @@ func main() {
 		log.Fatalln("ERROR: failed to start TCP listener: ", err.Error())
 	}
 
+	defer listener.Close()
+
 	for {
 		conn, err := listener.Accept()
 
@@ -35,11 +37,9 @@ func main() {
 
 		commandWords := strings.Split(command, "\r\n")
 
-		// fmt.Printf("%#v\n", commandWords)
-
 		for _, word := range commandWords {
-			if word == "PING" {
-				PONG := "+PONG\r\n"
+			if strings.ToLower(word) == "ping" {
+				PONG := "+pong\r\n"
 
 				_, err = conn.Write([]byte(PONG))
 
@@ -47,12 +47,6 @@ func main() {
 					log.Println("ERROR: failed to write data to connection: ", err.Error())
 				}
 			}
-		}
-
-		err = conn.Close()
-
-		if err != nil {
-			log.Println("ERROR: failed to close connection: ", err.Error())
 		}
 	}
 }
