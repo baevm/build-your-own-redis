@@ -33,7 +33,7 @@ func main() {
 
 		command := string(buf[:n])
 
-		commandWords := strings.Split(command, "\\r\\n")
+		commandWords := strings.Split(command, "\r\n")
 
 		// fmt.Printf("%#v\n", commandWords)
 
