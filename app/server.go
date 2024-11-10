@@ -39,7 +39,7 @@ func main() {
 
 		for _, word := range commandWords {
 			if strings.ToLower(word) == "ping" {
-				PONG := "+pong\r\n"
+				PONG := "+PONG\r\n"
 
 				_, err = conn.Write([]byte(PONG))
 
