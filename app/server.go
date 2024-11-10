@@ -25,27 +25,33 @@ func main() {
 			log.Fatalln("ERROR: failed to accept connection: ", err.Error())
 		}
 
-		buf := make([]byte, 1024)
+		go handleConn(conn)
+	}
+}
 
-		n, err := conn.Read(buf)
+func handleConn(conn net.Conn) {
+	defer conn.Close()
 
-		if err != nil {
-			log.Println("ERROR: failed to read data from connection: ", err.Error())
-		}
+	buf := make([]byte, 1024)
 
-		command := string(buf[:n])
+	n, err := conn.Read(buf)
 
-		commandWords := strings.Split(command, "\r\n")
+	if err != nil {
+		log.Println("ERROR: failed to read data from connection: ", err.Error())
+	}
 
-		for _, word := range commandWords {
-			if strings.ToLower(word) == "ping" {
-				PONG := "+PONG\r\n"
+	command := string(buf[:n])
 
-				_, err = conn.Write([]byte(PONG))
+	commandWords := strings.Split(command, "\r\n")
 
-				if err != nil {
-					log.Println("ERROR: failed to write data to connection: ", err.Error())
-				}
+	for _, word := range commandWords {
+		if strings.ToLower(word) == "ping" {
+			PONG := "+PONG\r\n"
+
+			_, err = conn.Write([]byte(PONG))
+
+			if err != nil {
+				log.Println("ERROR: failed to write data to connection: ", err.Error())
 			}
 		}
 	}
