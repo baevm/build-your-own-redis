@@ -32,7 +32,7 @@ func main() {
 
 		command := string(buf[:n])
 
-		if command == "PING" {
+		if command == "*1\r\n$4\r\nPING\r\n" {
 			PONG := "+PONG\r\n"
 
 			_, err = conn.Write([]byte(PONG))
