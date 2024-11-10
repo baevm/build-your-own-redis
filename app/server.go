@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
 )
@@ -49,56 +50,61 @@ func handleConn(conn net.Conn) {
 
 	resp := NewResp(conn)
 
-	value, err := resp.Read()
+	for {
+		value, err := resp.Read()
 
-	if err != nil {
-		log.Println(err)
-		return
-	}
+		if err != nil {
+			if err == io.EOF {
+				continue
+			} else {
+				log.Println("fail to read RESP: ", err)
+				return
+			}
+		}
 
-	log.Printf("%+v\n", value)
+		log.Printf("%+v\n", value)
 
-	if value.dataType == "bulk" {
+		if value.dataType == "bulk" {
 
-	} else {
-		i := 0
+		} else {
+			i := 0
 
-	loop:
-		for i < len(value.arrayVal) {
-			command := value.arrayVal[i]
+			for i < len(value.arrayVal) {
+				command := value.arrayVal[i]
 
-			switch command.bulkStrVal {
-			case "ping":
-				PONG := "+PONG\r\n"
+				switch command.bulkStrVal {
+				case "ping":
+					PONG := "+PONG\r\n"
 
-				_, err := conn.Write([]byte(PONG))
+					_, err := conn.Write([]byte(PONG))
 
-				if err != nil {
-					log.Println("ERROR: failed to write data to connection: ", err.Error())
-				}
+					if err != nil {
+						log.Println("ERROR: failed to write data to connection: ", err.Error())
+					}
 
-				i += 1
-
-			case "echo":
-				echoMsg := ""
-
-				if i+1 <= len(value.arrayVal)-1 {
 					i += 1
-					echoMsg = value.arrayVal[i].bulkStrVal
+
+				case "echo":
+					echoMsg := ""
+
+					if i+1 <= len(value.arrayVal)-1 {
+						i += 1
+						echoMsg = value.arrayVal[i].bulkStrVal
+					}
+
+					encodedStr := fmt.Sprintf("$%v\r\n%s\r\n", len(echoMsg), echoMsg)
+
+					_, err := conn.Write([]byte(encodedStr))
+
+					if err != nil {
+						log.Println("ERROR: failed to write data to connection: ", err.Error())
+					}
+
+					i += 1
+
+				default:
+					return
 				}
-
-				encodedStr := fmt.Sprintf("$%v\r\n%s\r\n", len(echoMsg), echoMsg)
-
-				_, err := conn.Write([]byte(encodedStr))
-
-				if err != nil {
-					log.Println("ERROR: failed to write data to connection: ", err.Error())
-				}
-
-				i += 1
-
-			default:
-				break loop
 			}
 		}
 	}
